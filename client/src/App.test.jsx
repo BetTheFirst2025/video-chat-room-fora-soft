@@ -6,9 +6,15 @@ import App from './App.jsx';
 describe('App routing', () => {
   it('рендерит StartPage на /', () => {
     render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
+      <MemoryRouter
+          initialEntries={['/']}
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <App />
+        </MemoryRouter>
     );
     // Проверяем актуальный текст StartPage (задача 20)
     expect(screen.getByText(/Введите имя/i)).toBeInTheDocument();
@@ -17,7 +23,11 @@ describe('App routing', () => {
 
   it('рендерит RoomPage на /room/:roomId', () => {
     render(
-      <MemoryRouter initialEntries={['/room/test-room-1']}>
+      <MemoryRouter initialEntries={['/room/test-room-1']}
+       future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}>
         <App />
       </MemoryRouter>
     );
@@ -26,7 +36,11 @@ describe('App routing', () => {
 
   it('редиректит на / при неизвестном маршруте', () => {
     render(
-      <MemoryRouter initialEntries={['/unknown']}>
+      <MemoryRouter initialEntries={['/unknown']}
+            future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}>
         <App />
       </MemoryRouter>
     );

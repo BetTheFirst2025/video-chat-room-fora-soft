@@ -15,7 +15,11 @@ vi.mock('react-router-dom', async () => {
 describe('StartPage', () => {
   it('рендерит заголовок и форму', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter
+       future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}>
         <StartPage />
       </MemoryRouter>
     );
@@ -27,7 +31,11 @@ describe('StartPage', () => {
     mockNavigate.mockClear();
 
     render(
-      <MemoryRouter>
+      <MemoryRouter 
+      future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}>
         <StartPage />
       </MemoryRouter>
     );
