@@ -408,4 +408,152 @@ describe('handlers (integration)', () => {
       expect(userMsgs.map((m) => m.text)).toEqual(['Первое', 'Второе']);
     });
   });
+
+    // ============================================================
+  // media:state
+  // ============================================================
+
+  describe('media:state', () => {
+    it('broadcast остальным, но не отправителю', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      await join(c2, 'room-1', 'Мария');
+
+      let c1Received = null;
+      let c2Received = null;
+      c1.on('media:state', (m) => { c1Received = m; });
+      c2.on('media:state', (m) => { c2Received = m; });
+
+      c1.emit('media:state', { audioEnabled: false, videoEnabled: true });
+      await new Promise((r) => setTimeout(r, 100));
+
+      // c1 НЕ должен получить своё же событие
+      expect(c1Received).toBeNull();
+      // c2 должен получить
+      expect(c2Received).not.toBeNull();
+      expect(c2Received.participantId).toBe(c1.id);
+      expect(c2Received.audioEnabled).toBe(false);
+      expect(c2Received.videoEnabled).toBe(true);
+    });
+
+    it('обновляет participant.audioEnabled/videoEnabled', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      const room = registry.get('room-1');
+      const participant = room.participants.get(c1.id);
+      expect(participant.audioEnabled).toBe(true);
+      expect(participant.videoEnabled).toBe(true);
+
+      c1.emit('media:state', { audioEnabled: false, videoEnabled: false });
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(participant.audioEnabled).toBe(false);
+      expect(participant.videoEnabled).toBe(false);
+    });
+
+    it('приводит мусор к false (не доверяем клиенту)', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      const room = registry.get('room-1');
+      const participant = room.participants.get(c1.id);
+
+      // Отправляем не-boolean значения
+      c1.emit('media:state', { audioEnabled: 'yes', videoEnabled: 1 });
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(participant.audioEnabled).toBe(false);
+      expect(participant.videoEnabled).toBe(false);
+    });
+
+    it('игнорирует media:state от сокета, не вошедшего в комнату', async () => {
+      const c1 = await connect();
+      // c1 НЕ входит в комнату
+
+      let received = null;
+      c1.on('media:state', (m) => { received = m; });
+
+      c1.emit('media:state', { audioEnabled: false, videoEnabled: false });
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Никакой комнаты — событие не должно разлетаться
+      expect(received).toBeNull();
+    });
+  });
+
+  // ============================================================
+  // room:leave
+  // ============================================================
+
+  describe('room:leave', () => {
+    it('удаляет участника и уведомляет остальных', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      const c2 = await connect();
+      await join(c2, 'room-1', 'Мария');
+
+      const leftPromise = waitFor(c1, 'room:participant-left');
+
+      c2.emit('room:leave');
+      const evt = await leftPromise;
+
+      expect(evt.name).toBe('Мария');
+      expect(evt.participantId).toBe(c2.id);
+      expect(registry.get('room-1').participants.size).toBe(1);
+    });
+
+    it('после room:leave клиент может снова войти', async () => {
+      const c1 = await connect();
+      const r1 = await join(c1, 'room-1', 'Алекс');
+      expect(r1.ok).toBe(true);
+
+      c1.emit('room:leave');
+      await new Promise((r) => setTimeout(r, 50));
+
+      const r2 = await join(c1, 'room-1', 'Алекс2');
+      expect(r2.ok).toBe(true);
+    });
+
+    it('room:leave без join — no-op, не падает', async () => {
+      const c1 = await connect();
+      c1.emit('room:leave');
+      await new Promise((r) => setTimeout(r, 50));
+      // Просто проверяем, что ничего не сломалось
+      expect(registry.size()).toBe(0);
+    });
+
+    it('при явном выходе последнего комната удаляется', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-solo', 'Алекс');
+      expect(registry.has('room-solo')).toBe(true);
+
+      c1.emit('room:leave');
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(registry.has('room-solo')).toBe(false);
+    });
+
+    it('системное сообщение «покинул комнату» добавляется в историю', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      const c2 = await connect();
+      await join(c2, 'room-1', 'Мария');
+
+      const msgPromise = new Promise((resolve) => {
+        c1.on('chat:message', (m) => {
+          if (m.kind === 'system' && m.text.includes('Мария покинул')) {
+            resolve(m);
+          }
+        });
+      });
+
+      c2.emit('room:leave');
+      const evt = await msgPromise;
+
+      expect(evt.kind).toBe('system');
+      expect(evt.text).toBe('Мария покинул комнату');
+    });
+  });
 });

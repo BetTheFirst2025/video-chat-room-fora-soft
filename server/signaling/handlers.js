@@ -22,7 +22,6 @@ export function registerHandlers(io, socket, registry) {
   // room:join
   // ============================================================
   socket.on('room:join', (payload, ack) => {
-    // Защита от повторного join с того же сокета
     if (session) {
       if (typeof ack === 'function') ack({ ok: false, code: 'ALREADY_JOINED' });
       return;
@@ -31,14 +30,12 @@ export function registerHandlers(io, socket, registry) {
     const roomId = payload?.roomId;
     const rawName = payload?.name;
 
-    // Валидация roomId
     if (!isValidRoomId(roomId)) {
       if (typeof ack === 'function') ack({ ok: false, code: 'INVALID_ROOM' });
       socket.emit('room:error', { code: 'INVALID_ROOM' });
       return;
     }
 
-    // Валидация имени
     const name = sanitizeName(rawName);
     if (!name) {
       if (typeof ack === 'function') ack({ ok: false, code: 'INVALID_NAME' });
@@ -46,10 +43,7 @@ export function registerHandlers(io, socket, registry) {
       return;
     }
 
-    // Создаём участника
     const participant = createParticipant(socket.id, name);
-
-    // Атомарная попытка входа
     const result = registry.tryJoin(roomId, participant);
 
     if (!result.ok) {
@@ -60,11 +54,9 @@ export function registerHandlers(io, socket, registry) {
 
     const room = result.room;
 
-    // Подписываем сокет на комнату Socket.io
     socket.join(roomId);
     session = { roomId, participantId: participant.id };
 
-    // Системное сообщение о входе
     const systemMsg = {
       id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       kind: 'system',
@@ -73,7 +65,6 @@ export function registerHandlers(io, socket, registry) {
     };
     room.addMessage(systemMsg);
 
-    // Ответ тому, кто вошёл: selfId, состав, история
     const joinedPayload = {
       selfId: participant.id,
       roomId,
@@ -84,12 +75,7 @@ export function registerHandlers(io, socket, registry) {
     if (typeof ack === 'function') ack({ ok: true, ...joinedPayload });
     socket.emit('room:joined', joinedPayload);
 
-    // Уведомляем остальных
-    socket.to(roomId).emit('room:participant-joined', {
-      participant,
-    });
-
-    // Системное сообщение — всем в комнате
+    socket.to(roomId).emit('room:participant-joined', { participant });
     io.to(roomId).emit('chat:message', systemMsg);
 
     console.log(
@@ -100,15 +86,6 @@ export function registerHandlers(io, socket, registry) {
   // ============================================================
   // signal:offer / signal:answer / signal:ice
   // ============================================================
-
-  /**
-   * Общая логика для сигнальных событий.
-   * Проверяет, что отправитель в комнате, получатель существует и в той же комнате.
-   * Если ок — пересылает payload адресату с добавленным from.
-   *
-   * @param {string} event   — 'signal:offer' | 'signal:answer' | 'signal:ice'
-   * @param {object} payload — { to, ...rest }
-   */
   function relaySignal(event, payload) {
     if (!session) return;
     const { roomId, participantId: fromId } = session;
@@ -118,36 +95,23 @@ export function registerHandlers(io, socket, registry) {
 
     const room = registry.get(roomId);
     if (!room) return;
-
-    // Получатель должен быть в этой же комнате
     if (!room.participants.has(to)) return;
-
-    // Нельзя отправить самому себе
     if (to === fromId) return;
 
-    // Пробрасываем адресату с добавлением from
     const forwarded = { from: fromId, ...payload };
     delete forwarded.to;
     io.to(to).emit(event, forwarded);
   }
 
-  socket.on('signal:offer', (payload) => {
-    relaySignal('signal:offer', payload);
-  });
-
-  socket.on('signal:answer', (payload) => {
-    relaySignal('signal:answer', payload);
-  });
-
-  socket.on('signal:ice', (payload) => {
-    relaySignal('signal:ice', payload);
-  });
+  socket.on('signal:offer', (payload) => relaySignal('signal:offer', payload));
+  socket.on('signal:answer', (payload) => relaySignal('signal:answer', payload));
+  socket.on('signal:ice', (payload) => relaySignal('signal:ice', payload));
 
   // ============================================================
   // chat:message
   // ============================================================
   socket.on('chat:message', (payload) => {
-    if (!session) return; // не в комнате — игнор
+    if (!session) return;
 
     const { roomId, participantId } = session;
     const room = registry.get(roomId);
@@ -157,7 +121,7 @@ export function registerHandlers(io, socket, registry) {
     if (!participant) return;
 
     const text = sanitizeMessage(payload?.text);
-    if (!text) return; // пустое — игнор
+    if (!text) return;
 
     const message = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -169,18 +133,13 @@ export function registerHandlers(io, socket, registry) {
     };
 
     room.addMessage(message);
-
-    // Broadcast всем в комнате, включая отправителя.
-    // Отправитель получит сообщение с серверным id и ts.
     io.to(roomId).emit('chat:message', message);
   });
 
   // ============================================================
-  // disconnect
+  // media:state
   // ============================================================
-  socket.on('disconnect', (reason) => {
-    console.log(`[socket] disconnected: ${socket.id} (${reason})`);
-
+  socket.on('media:state', (payload) => {
     if (!session) return;
 
     const { roomId, participantId } = session;
@@ -188,15 +147,43 @@ export function registerHandlers(io, socket, registry) {
     if (!room) return;
 
     const participant = room.participants.get(participantId);
+    if (!participant) return;
+
+    // Принимаем только boolean-значения (защита от мусора)
+    const audioEnabled = payload?.audioEnabled === true;
+    const videoEnabled = payload?.videoEnabled === true;
+
+    participant.audioEnabled = audioEnabled;
+    participant.videoEnabled = videoEnabled;
+
+    // Broadcast остальным — отправитель знает своё состояние локально
+    socket.to(roomId).emit('media:state', {
+      participantId,
+      audioEnabled,
+      videoEnabled,
+    });
+  });
+
+  // ============================================================
+  // Общая логика выхода из комнаты
+  // Используется и для room:leave, и для disconnect.
+  // ============================================================
+  function leaveRoom(reason) {
+    if (!session) return;
+
+    const { roomId, participantId } = session;
+    const room = registry.get(roomId);
+
+    session = null;
+
+    if (!room) return;
+
+    const participant = room.participants.get(participantId);
     const name = participant?.name ?? 'Участник';
 
     registry.leave(roomId, participantId);
 
-    // Уведомляем остальных
-    socket.to(roomId).emit('room:participant-left', {
-      participantId,
-      name,
-    });
+    socket.to(roomId).emit('room:participant-left', { participantId, name });
 
     // Системное сообщение — только если комната ещё существует
     if (registry.has(roomId)) {
@@ -206,13 +193,28 @@ export function registerHandlers(io, socket, registry) {
         text: `${name} покинул комнату`,
         ts: Date.now(),
       };
-      const remainingRoom = registry.get(roomId);
-      remainingRoom.addMessage(systemMsg);
+      registry.get(roomId).addMessage(systemMsg);
       io.to(roomId).emit('chat:message', systemMsg);
     } else {
-      console.log(`[room] deleted (empty): ${roomId}`);
+      console.log(`[room] deleted (empty): ${roomId} (${reason})`);
     }
 
-    session = null;
+    console.log(`[room:leave] ${name} (${socket.id}) ← ${roomId} (${reason})`);
+  }
+
+  // ============================================================
+  // room:leave (явный выход)
+  // ============================================================
+  socket.on('room:leave', () => {
+    socket.leave(session?.roomId);
+    leaveRoom('explicit');
+  });
+
+  // ============================================================
+  // disconnect (обрыв или закрытие вкладки)
+  // ============================================================
+  socket.on('disconnect', (reason) => {
+    console.log(`[socket] disconnected: ${socket.id} (${reason})`);
+    leaveRoom('disconnect');
   });
 }
