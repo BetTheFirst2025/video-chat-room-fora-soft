@@ -95,6 +95,52 @@ export function registerHandlers(io, socket, registry) {
     console.log(`[room:join] ${name} (${socket.id}) → ${roomId} (${room.participants.size}/${room.isFull() ? 'FULL' : 'ok'})`);
   });
 
+    // ============================================================
+  // signal:offer / signal:answer / signal:ice
+  // ============================================================
+
+  /**
+   * Общая логика для сигнальных событий.
+   * Проверяет, что отправитель в комнате, получатель существует и в той же комнате.
+   * Если ок — пересылает payload адресату с добавленным from.
+   *
+   * @param {string} event   — 'signal:offer' | 'signal:answer' | 'signal:ice'
+   * @param {object} payload — { to, ...rest }
+   */
+  function relaySignal(event, payload) {
+    if (!session) return;
+    const { roomId, participantId: fromId } = session;
+
+    const to = payload?.to;
+    if (typeof to !== 'string') return;
+
+    const room = registry.get(roomId);
+    if (!room) return;
+
+    // Получатель должен быть в этой же комнате
+    if (!room.participants.has(to)) return;
+
+    // Нельзя отправить самому себе
+    if (to === fromId) return;
+
+    // Пробрасываем адресату с добавлением from
+    const forwarded = { from: fromId, ...payload, to: undefined };
+    delete forwarded.to;
+    io.to(to).emit(event, forwarded);
+  }
+
+  socket.on('signal:offer', (payload) => {
+    relaySignal('signal:offer', payload);
+  });
+
+  socket.on('signal:answer', (payload) => {
+    relaySignal('signal:answer', payload);
+  });
+
+  socket.on('signal:ice', (payload) => {
+    relaySignal('signal:ice', payload);
+  });
+  
   // ============================================================
   // disconnect
   // ============================================================

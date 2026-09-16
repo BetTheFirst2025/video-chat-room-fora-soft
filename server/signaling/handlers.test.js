@@ -73,6 +73,10 @@ describe('handlers (integration)', () => {
     });
   }
 
+  // ============================================================
+  // room:join / disconnect
+  // ============================================================
+
   it('первый участник успешно входит', async () => {
     const c1 = await connect();
     const res = await join(c1, 'room-1', 'Алекс');
@@ -155,22 +159,21 @@ describe('handlers (integration)', () => {
   });
 
   it('при disconnect остальные получают room:participant-left', async () => {
-  const c1 = await connect();
-  await join(c1, 'room-1', 'Алекс');
-  const c2 = await connect();
-  await join(c2, 'room-1', 'Мария');
+    const c1 = await connect();
+    await join(c1, 'room-1', 'Алекс');
+    const c2 = await connect();
+    await join(c2, 'room-1', 'Мария');
 
-  // Сохраняем ID ДО закрытия — после close() c2.id станет undefined
-  const c2Id = c2.id;
-  const c2Name = 'Мария';
+    // Сохраняем ID ДО закрытия — после close() c2.id станет undefined
+    const c2Id = c2.id;
 
-  const leftPromise = waitFor(c1, 'room:participant-left');
-  c2.close();
+    const leftPromise = waitFor(c1, 'room:participant-left');
+    c2.close();
 
-  const evt = await leftPromise;
-  expect(evt.name).toBe(c2Name);
-  expect(evt.participantId).toBe(c2Id);
-});
+    const evt = await leftPromise;
+    expect(evt.name).toBe('Мария');
+    expect(evt.participantId).toBe(c2Id);
+  });
 
   it('комната удаляется, когда уходит последний', async () => {
     const c1 = await connect();
@@ -182,5 +185,119 @@ describe('handlers (integration)', () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(registry.has('room-solo')).toBe(false);
+  });
+
+  // ============================================================
+  // signal:offer / signal:answer / signal:ice
+  // ============================================================
+
+  describe('signal:offer/answer/ice', () => {
+    it('signal:offer пробрасывается адресату с полем from', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      await join(c2, 'room-1', 'Мария');
+
+      const offerPromise = waitFor(c2, 'signal:offer');
+      const sdp = { type: 'offer', sdp: 'v=0...' };
+      c1.emit('signal:offer', { to: c2.id, sdp });
+
+      const evt = await offerPromise;
+      expect(evt.from).toBe(c1.id);
+      expect(evt.sdp).toEqual(sdp);
+      expect(evt.to).toBeUndefined();
+    });
+
+    it('signal:answer пробрасывается адресату', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      await join(c2, 'room-1', 'Мария');
+
+      const answerPromise = waitFor(c1, 'signal:answer');
+      const sdp = { type: 'answer', sdp: 'v=0...' };
+      c2.emit('signal:answer', { to: c1.id, sdp });
+
+      const evt = await answerPromise;
+      expect(evt.from).toBe(c2.id);
+      expect(evt.sdp).toEqual(sdp);
+    });
+
+    it('signal:ice пробрасывается адресату', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      await join(c2, 'room-1', 'Мария');
+
+      const icePromise = waitFor(c2, 'signal:ice');
+      const candidate = { candidate: 'candidate:...', sdpMid: '0', sdpMLineIndex: 0 };
+      c1.emit('signal:ice', { to: c2.id, candidate });
+
+      const evt = await icePromise;
+      expect(evt.from).toBe(c1.id);
+      expect(evt.candidate).toEqual(candidate);
+    });
+
+    it('игнорирует signal, если отправитель не в комнате', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c2, 'room-1', 'Мария');
+      // c1 НЕ входит в комнату
+
+      let received = false;
+      c2.on('signal:offer', () => {
+        received = true;
+      });
+      c1.emit('signal:offer', { to: c2.id, sdp: {} });
+
+      await new Promise((r) => setTimeout(r, 100));
+      expect(received).toBe(false);
+    });
+
+    it('игнорирует signal, если получатель не в комнате', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      // c2 НЕ входит в комнату
+
+      let received = false;
+      c2.on('signal:offer', () => {
+        received = true;
+      });
+      c1.emit('signal:offer', { to: c2.id, sdp: {} });
+
+      await new Promise((r) => setTimeout(r, 100));
+      expect(received).toBe(false);
+    });
+
+    it('игнорирует signal самому себе', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      let received = false;
+      c1.on('signal:offer', () => {
+        received = true;
+      });
+      c1.emit('signal:offer', { to: c1.id, sdp: {} });
+
+      await new Promise((r) => setTimeout(r, 100));
+      expect(received).toBe(false);
+    });
+
+    it('игнорирует signal с невалидным to', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      let received = false;
+      c1.on('signal:offer', () => {
+        received = true;
+      });
+      c1.emit('signal:offer', { to: 123, sdp: {} });
+      c1.emit('signal:offer', { sdp: {} }); // без to
+      c1.emit('signal:offer', null);
+
+      await new Promise((r) => setTimeout(r, 100));
+      expect(received).toBe(false);
+    });
   });
 });
