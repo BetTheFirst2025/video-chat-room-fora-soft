@@ -1,0 +1,43 @@
+# EditorConfig — https://editorconfig.org
+# Единый стиль форматирования для всех редакторов и IDE.
+
+# Корневой файл — не искать .editorconfig выше по дереву
+root = true
+
+# Настройки по умолчанию для всех файлов
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Markdown — не обрезать пробелы (двойной пробел = <br>)
+[*.md]
+trim_trailing_whitespace = false
+
+# YAML / JSON / JS / TS / JSX / TSX — 2 пробела
+[*.{yml,yaml,json,js,jsx,ts,tsx,mjs,cjs}]
+indent_size = 2
+
+# CSS / SCSS — 2 пробела
+[*.{css,scss,sass,less}]
+indent_size = 2
+
+# HTML — 2 пробела
+[*.html]
+indent_size = 2
+
+# PowerShell — CRLF и 4 пробела (специфика Windows)
+[*.ps1]
+end_of_line = crlf
+indent_size = 4
+
+# Makefile — табы обязательны
+[Makefile]
+indent_style = tab
+
+# Файлы с расширением .bat / .cmd — CRLF
+[*.{bat,cmd}]
+end_of_line = crlf
