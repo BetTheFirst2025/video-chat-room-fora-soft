@@ -215,3 +215,30 @@ h1 {
   font-style: italic;
   font-size: 13px;
 }
+
+.room__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.room__copy-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #e6e6e6;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.room__copy-btn:hover {
+  background: #3a3a3a;
+  border-color: #4a7fe0;
+}
+
+.room__copy-btn:active {
+  background: #2a2a2a;
+}

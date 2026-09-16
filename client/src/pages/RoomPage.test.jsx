@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import RoomPage from './RoomPage.jsx';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
 
 // Мокаем useSocket
 vi.mock('../hooks/useSocket.js', () => ({
@@ -15,6 +16,14 @@ vi.mock('../hooks/useSocket.js', () => ({
     sendSignal: vi.fn(),
     sendMediaState: vi.fn(),
     leaveRoom: vi.fn(),
+  })),
+}));
+
+vi.mock('../hooks/useCopyToClipboard.js', () => ({
+  useCopyToClipboard: vi.fn(() => ({
+    copy: vi.fn(),
+    copied: false,
+    error: null,
   })),
 }));
 
@@ -79,5 +88,25 @@ describe('RoomPage', () => {
 
     renderWithRoute('/room/test-room-1', { name: 'Алекс' });
     expect(screen.getByText(/ROOM_FULL/)).toBeInTheDocument();
+  });
+  it('рендерит кнопку «Скопировать ссылку»', () => {
+  renderWithRoute('/room/test-room-1', { name: 'Алекс' });
+  expect(
+    screen.getByRole('button', { name: /Скопировать ссылку/i })
+  ).toBeInTheDocument();
+});
+
+  it('вызывает copy при клике на кнопку', () => {
+    const copyMock = vi.fn();
+    useCopyToClipboard.mockReturnValueOnce({
+      copy: copyMock,
+      copied: false,
+      error: null,
+    });
+
+    renderWithRoute('/room/test-room-1', { name: 'Алекс' });
+    fireEvent.click(screen.getByRole('button', { name: /Скопировать ссылку/i }));
+
+    expect(copyMock).toHaveBeenCalledOnce();
   });
 });

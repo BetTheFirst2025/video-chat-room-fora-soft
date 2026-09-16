@@ -2,6 +2,7 @@ import { useParams, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import NameForm from '../components/NameForm.jsx';
 import { useSocket } from '../hooks/useSocket.js';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -27,13 +28,10 @@ export default function RoomPage() {
  * Нужен, чтобы useSocket не запускался до того, как name известен.
  */
 function RoomContent({ roomId, name }) {
-  const {
-    connected,
-    error,
-    selfId,
-    participants,
-    messages,
-  } = useSocket(roomId, name);
+  const { connected, error, selfId, participants, messages } = useSocket(roomId, name);
+  const { copy, copied } = useCopyToClipboard();
+
+  const inviteUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   if (error) {
     return (
@@ -51,8 +49,18 @@ function RoomContent({ roomId, name }) {
         <div className="room__title">
           Комната: <code>{roomId}</code>
         </div>
-        <div className="room__status">
-          {connected ? '🟢 Подключено' : '🔴 Подключение…'}
+        <div className="room__header-actions">
+          <button
+            type="button"
+            className="room__copy-btn"
+            onClick={() => copy(inviteUrl)}
+            title="Скопировать ссылку-приглашение"
+          >
+            {copied ? '✓ Ссылка скопирована' : '🔗 Скопировать ссылку'}
+          </button>
+          <div className="room__status">
+            {connected ? '🟢 Подключено' : '🔴 Подключение…'}
+          </div>
         </div>
       </header>
 
