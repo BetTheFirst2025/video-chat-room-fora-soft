@@ -6,7 +6,13 @@ import App from './App.jsx';
 describe('App routing', () => {
   it('рендерит StartPage на /', () => {
     render(
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter
+  initialEntries={['/']}
+  future={{
+    v7_startTransition: true,
+    v7_relativeSplatPath: true,
+  }}
+>
         <App />
       </MemoryRouter>
     );
