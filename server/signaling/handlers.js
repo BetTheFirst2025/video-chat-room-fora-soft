@@ -1,4 +1,4 @@
-import { sanitizeName, isValidRoomId } from './validate.js';
+import { sanitizeName, sanitizeMessage, isValidRoomId } from './validate.js';
 import { createParticipant } from '../rooms/Participant.js';
 
 /**
@@ -92,10 +92,12 @@ export function registerHandlers(io, socket, registry) {
     // Системное сообщение — всем в комнате
     io.to(roomId).emit('chat:message', systemMsg);
 
-    console.log(`[room:join] ${name} (${socket.id}) → ${roomId} (${room.participants.size}/${room.isFull() ? 'FULL' : 'ok'})`);
+    console.log(
+      `[room:join] ${name} (${socket.id}) → ${roomId} (${room.participants.size}/${room.isFull() ? 'FULL' : 'ok'})`
+    );
   });
 
-    // ============================================================
+  // ============================================================
   // signal:offer / signal:answer / signal:ice
   // ============================================================
 
@@ -124,7 +126,7 @@ export function registerHandlers(io, socket, registry) {
     if (to === fromId) return;
 
     // Пробрасываем адресату с добавлением from
-    const forwarded = { from: fromId, ...payload, to: undefined };
+    const forwarded = { from: fromId, ...payload };
     delete forwarded.to;
     io.to(to).emit(event, forwarded);
   }
@@ -140,7 +142,39 @@ export function registerHandlers(io, socket, registry) {
   socket.on('signal:ice', (payload) => {
     relaySignal('signal:ice', payload);
   });
-  
+
+  // ============================================================
+  // chat:message
+  // ============================================================
+  socket.on('chat:message', (payload) => {
+    if (!session) return; // не в комнате — игнор
+
+    const { roomId, participantId } = session;
+    const room = registry.get(roomId);
+    if (!room) return;
+
+    const participant = room.participants.get(participantId);
+    if (!participant) return;
+
+    const text = sanitizeMessage(payload?.text);
+    if (!text) return; // пустое — игнор
+
+    const message = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      kind: 'user',
+      authorId: participantId,
+      authorName: participant.name,
+      text,
+      ts: Date.now(),
+    };
+
+    room.addMessage(message);
+
+    // Broadcast всем в комнате, включая отправителя.
+    // Отправитель получит сообщение с серверным id и ts.
+    io.to(roomId).emit('chat:message', message);
+  });
+
   // ============================================================
   // disconnect
   // ============================================================

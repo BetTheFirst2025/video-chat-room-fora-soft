@@ -300,4 +300,112 @@ describe('handlers (integration)', () => {
       expect(received).toBe(false);
     });
   });
+
+  // ============================================================
+  // chat:message
+  // ============================================================
+
+  describe('chat:message', () => {
+       it('broadcast сообщения всем в комнате, включая отправителя', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      await join(c2, 'room-1', 'Мария');
+
+      let received1 = null;
+      let received2 = null;
+      c1.on('chat:message', (m) => { if (m.kind === 'user') received1 = m; });
+      c2.on('chat:message', (m) => { if (m.kind === 'user') received2 = m; });
+
+      c1.emit('chat:message', { text: 'Привет!' });
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(received1).not.toBeNull();
+      expect(received2).not.toBeNull();
+      expect(received1.id).toBe(received2.id);
+      expect(received1.text).toBe('Привет!');
+      expect(received1.authorName).toBe('Алекс');
+      expect(received2.authorName).toBe('Алекс');
+    });
+
+    it('сообщение содержит id, kind, authorId, authorName, text, ts', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      let received = null;
+      c1.on('chat:message', (m) => { if (m.kind === 'user') received = m; });
+
+      c1.emit('chat:message', { text: 'Тест' });
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(received).not.toBeNull();
+      expect(received.id).toMatch(/^msg-/);
+      expect(received.kind).toBe('user');
+      expect(received.authorId).toBe(c1.id);
+      expect(received.authorName).toBe('Алекс');
+      expect(received.text).toBe('Тест');
+      expect(typeof received.ts).toBe('number');
+    });
+
+    it('игнорирует пустое сообщение', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      let received = null;
+      c1.on('chat:message', (m) => { if (m.kind === 'user') received = m; });
+
+      c1.emit('chat:message', { text: '   ' });
+      c1.emit('chat:message', { text: '' });
+      c1.emit('chat:message', {});
+      c1.emit('chat:message', null);
+
+      await new Promise((r) => setTimeout(r, 100));
+      expect(received).toBeNull();
+    });
+
+    it('обрезает слишком длинное сообщение до MAX_MSG_LEN', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      let received = null;
+      c1.on('chat:message', (m) => { if (m.kind === 'user') received = m; });
+
+      const long = 'a'.repeat(config.MAX_MSG_LEN + 100);
+      c1.emit('chat:message', { text: long });
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(received).not.toBeNull();
+      expect(received.text).toHaveLength(config.MAX_MSG_LEN);
+    });
+
+    it('игнорирует сообщение от сокета, не вошедшего в комнату', async () => {
+      const c1 = await connect();
+      // c1 НЕ входит в комнату
+
+      let received = null;
+      c1.on('chat:message', (m) => { if (m.kind === 'user') received = m; });
+
+      c1.emit('chat:message', { text: 'Привет' });
+      await new Promise((r) => setTimeout(r, 100));
+
+      expect(received).toBeNull();
+    });
+
+    it('сообщения накапливаются в history и видны позднему участнику', async () => {
+      const c1 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+
+      c1.emit('chat:message', { text: 'Первое' });
+      await new Promise((r) => setTimeout(r, 50));
+      c1.emit('chat:message', { text: 'Второе' });
+      await new Promise((r) => setTimeout(r, 50));
+
+      const c2 = await connect();
+      const res = await join(c2, 'room-1', 'Мария');
+
+      expect(res.history).toHaveLength(4); // system(Алекс) + Первое + Второе + system(Мария)
+      const userMsgs = res.history.filter((m) => m.kind === 'user');
+      expect(userMsgs.map((m) => m.text)).toEqual(['Первое', 'Второе']);
+    });
+  });
 });
