@@ -90,3 +90,128 @@ h1 {
 .name-form__submit:active {
   background: #3a6fd0;
 }
+
+/* === Room layout === */
+.room {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.room__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: #222;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.room__title {
+  font-size: 14px;
+  color: #b8b8b8;
+}
+
+.room__title code {
+  color: #e6e6e6;
+  background: #2a2a2a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.room__status {
+  font-size: 13px;
+  color: #b8b8b8;
+}
+
+.room__main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.room__video {
+  flex: 1;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.room__video-placeholder {
+  text-align: center;
+  color: #666;
+}
+
+.room__sidebar {
+  width: 320px;
+  background: #1e1e1e;
+  border-left: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.room__participants {
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.room__participants h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.5px;
+}
+
+.room__participants ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.room__participants li {
+  padding: 4px 0;
+  color: #d8d8d8;
+}
+
+.room__chat {
+  flex: 1;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.room__chat h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.5px;
+}
+
+.room__chat-placeholder {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 14px;
+  color: #d8d8d8;
+}
+
+.msg {
+  padding: 4px 0;
+  word-break: break-word;
+}
+
+.msg--system {
+  color: #888;
+  font-style: italic;
+  font-size: 13px;
+}
