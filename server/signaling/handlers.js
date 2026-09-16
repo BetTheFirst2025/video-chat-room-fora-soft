@@ -75,9 +75,7 @@ export function registerHandlers(io, socket, registry) {
 
     // Уведомляем остальных
     socket.to(roomId).emit('room:participant-joined', { participant });
-
-    // Системное сообщение — всем (использует уже добавленный systemMsg)
-    io.to(roomId).emit('chat:message', systemMsg);
+    socket.to(roomId).emit('chat:message', systemMsg);
 
     console.log(
       `[room:join] ${name} (${socket.id}) → ${roomId} (${room.participants.size}/${room.isFull() ? 'FULL' : 'ok'})`

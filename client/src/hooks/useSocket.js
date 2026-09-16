@@ -81,7 +81,10 @@ export function useSocket(roomId, name) {
 
     // === chat:message ===
     socket.on('chat:message', (message) => {
-      setMessages((prev) => [...prev, message]);
+    setMessages((prev) => {
+        if (prev.some((m) => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
     });
 
     // === media:state ===

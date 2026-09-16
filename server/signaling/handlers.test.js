@@ -556,4 +556,21 @@ describe('handlers (integration)', () => {
       expect(evt.text).toBe('Мария покинул комнату');
     });
   });
+
+  it('первый участник НЕ получает chat:message о своём входе (нет дубликата)', async () => {
+    const c1 = await connect();
+
+    const chatMessages = [];
+    c1.on('chat:message', (m) => chatMessages.push(m));
+
+    const res = await join(c1, 'room-1', 'Алекс');
+
+    // История содержит systemMsg
+    expect(res.history).toHaveLength(1);
+    expect(res.history[0].kind).toBe('system');
+
+    // Но chat:message с этим же id НЕ приходит
+    await new Promise((r) => setTimeout(r, 100));
+    expect(chatMessages).toHaveLength(0);
+  });
 });
