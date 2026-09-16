@@ -5,6 +5,7 @@ import { config } from './config.js';
 
 const app = express();
 const httpServer = createServer(app);
+// eslint-disable-next-line no-unused-vars
 const io = new Server(httpServer, {
   cors: {
     origin: config.NODE_ENV === 'development' ? '*' : false,
