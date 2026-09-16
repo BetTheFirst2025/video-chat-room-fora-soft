@@ -1,5 +1,6 @@
 import { sanitizeName, sanitizeMessage, isValidRoomId } from './validate.js';
 import { createParticipant } from '../rooms/Participant.js';
+import { createSystemMessage, broadcastSystemMessage } from './systemMessage.js';
 
 /**
  * Регистрирует обработчики Socket.io для одного подключения.
@@ -57,12 +58,9 @@ export function registerHandlers(io, socket, registry) {
     socket.join(roomId);
     session = { roomId, participantId: participant.id };
 
-    const systemMsg = {
-      id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      kind: 'system',
-      text: `${name} присоединился к комнате`,
-      ts: Date.now(),
-    };
+    // Системное сообщение о входе (добавляется до joinedPayload,
+    // чтобы вошедший увидел его в history)
+    const systemMsg = createSystemMessage(`${name} присоединился к комнате`);
     room.addMessage(systemMsg);
 
     const joinedPayload = {
@@ -75,7 +73,10 @@ export function registerHandlers(io, socket, registry) {
     if (typeof ack === 'function') ack({ ok: true, ...joinedPayload });
     socket.emit('room:joined', joinedPayload);
 
+    // Уведомляем остальных
     socket.to(roomId).emit('room:participant-joined', { participant });
+
+    // Системное сообщение — всем (использует уже добавленный systemMsg)
     io.to(roomId).emit('chat:message', systemMsg);
 
     console.log(
@@ -149,24 +150,18 @@ export function registerHandlers(io, socket, registry) {
     const participant = room.participants.get(participantId);
     if (!participant) return;
 
-    // Принимаем только boolean-значения (защита от мусора)
-    const audioEnabled = payload?.audioEnabled === true;
-    const videoEnabled = payload?.videoEnabled === true;
+    participant.audioEnabled = payload?.audioEnabled === true;
+    participant.videoEnabled = payload?.videoEnabled === true;
 
-    participant.audioEnabled = audioEnabled;
-    participant.videoEnabled = videoEnabled;
-
-    // Broadcast остальным — отправитель знает своё состояние локально
     socket.to(roomId).emit('media:state', {
       participantId,
-      audioEnabled,
-      videoEnabled,
+      audioEnabled: participant.audioEnabled,
+      videoEnabled: participant.videoEnabled,
     });
   });
 
   // ============================================================
   // Общая логика выхода из комнаты
-  // Используется и для room:leave, и для disconnect.
   // ============================================================
   function leaveRoom(reason) {
     if (!session) return;
@@ -187,14 +182,7 @@ export function registerHandlers(io, socket, registry) {
 
     // Системное сообщение — только если комната ещё существует
     if (registry.has(roomId)) {
-      const systemMsg = {
-        id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        kind: 'system',
-        text: `${name} покинул комнату`,
-        ts: Date.now(),
-      };
-      registry.get(roomId).addMessage(systemMsg);
-      io.to(roomId).emit('chat:message', systemMsg);
+      broadcastSystemMessage(io, registry.get(roomId), `${name} покинул комнату`);
     } else {
       console.log(`[room] deleted (empty): ${roomId} (${reason})`);
     }
@@ -202,17 +190,11 @@ export function registerHandlers(io, socket, registry) {
     console.log(`[room:leave] ${name} (${socket.id}) ← ${roomId} (${reason})`);
   }
 
-  // ============================================================
-  // room:leave (явный выход)
-  // ============================================================
   socket.on('room:leave', () => {
     socket.leave(session?.roomId);
     leaveRoom('explicit');
   });
 
-  // ============================================================
-  // disconnect (обрыв или закрытие вкладки)
-  // ============================================================
   socket.on('disconnect', (reason) => {
     console.log(`[socket] disconnected: ${socket.id} (${reason})`);
     leaveRoom('disconnect');
