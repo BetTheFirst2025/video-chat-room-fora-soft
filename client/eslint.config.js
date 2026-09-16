@@ -22,6 +22,7 @@ export default [
         RTCPeerConnection: 'readonly',
         MediaStream: 'readonly',
         fetch: 'readonly',
+        crypto: 'readonly',
       },
     },
     plugins: {
