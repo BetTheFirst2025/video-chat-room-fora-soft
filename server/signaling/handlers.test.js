@@ -299,6 +299,24 @@ describe('handlers (integration)', () => {
       await new Promise((r) => setTimeout(r, 100));
       expect(received).toBe(false);
     });
+
+    it('игнорирует signal с to, содержащим недопустимые символы', async () => {
+      const c1 = await connect();
+      const c2 = await connect();
+      await join(c1, 'room-1', 'Алекс');
+      await join(c2, 'room-1', 'Мария');
+
+      let received = false;
+      c2.on('signal:offer', () => { received = true; });
+
+      c1.emit('signal:offer', { to: 'abc def', sdp: {} });           // пробел
+      c1.emit('signal:offer', { to: '../evil', sdp: {} });           // слеш
+      c1.emit('signal:offer', { to: 'a'.repeat(100), sdp: {} });     // слишком长
+      c1.emit('signal:offer', { to: '', sdp: {} });                  // пустая
+
+      await new Promise((r) => setTimeout(r, 100));
+      expect(received).toBe(false);
+    });
   });
 
   // ============================================================

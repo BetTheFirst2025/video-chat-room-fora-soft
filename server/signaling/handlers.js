@@ -89,8 +89,11 @@ export function registerHandlers(io, socket, registry) {
     if (!session) return;
     const { roomId, participantId: fromId } = session;
 
+    // === Валидация 'to' (task 42) ===
     const to = payload?.to;
     if (typeof to !== 'string') return;
+    if (to.length === 0 || to.length > 64) return;           
+    if (!/^[A-Za-z0-9_-]+$/.test(to)) return;                
 
     const room = registry.get(roomId);
     if (!room) return;
