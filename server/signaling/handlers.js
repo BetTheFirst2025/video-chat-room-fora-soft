@@ -78,7 +78,7 @@ export function registerHandlers(io, socket, registry) {
     socket.to(roomId).emit('chat:message', systemMsg);
 
     console.log(
-      `[room:join] ${name} (${socket.id}) → ${roomId} (${room.participants.size}/${room.isFull() ? 'FULL' : 'ok'})`
+      `[room:join] <name:${name.length}> (${socket.id.slice(0, 6)}) → ${roomId} (${room.participants.size})`
     );
   });
 
@@ -188,7 +188,7 @@ export function registerHandlers(io, socket, registry) {
       console.log(`[room] deleted (empty): ${roomId} (${reason})`);
     }
 
-    console.log(`[room:leave] ${name} (${socket.id}) ← ${roomId} (${reason})`);
+    console.log( `[room:leave] <name:${name.length}> (${socket.id.slice(0, 6)}) ← ${roomId} (${reason})`);
   }
 
   socket.on('room:leave', () => {
