@@ -26,6 +26,10 @@ vi.mock('../hooks/useMesh.js', () => ({
   })),
 }));
 
+vi.mock('../lib/webrtcSupport.js', () => ({
+  isWebRTCSupported: () => true,
+}));
+
 // === Дефолтные возвраты ===
 function defaultSocketReturn(overrides = {}) {
   return {

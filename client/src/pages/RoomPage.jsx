@@ -10,11 +10,22 @@ import Controls from '../components/Controls.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
 import ParticipantsList from '../components/ParticipantsList.jsx';
 import ErrorBanner from '../components/ErrorBanner.jsx';
+import { isWebRTCSupported } from '../lib/webrtcSupport.js';
 
 export default function RoomPage() {
   const { roomId } = useParams();
   const location = useLocation();
   const [name, setName] = useState(location.state?.name ?? null);
+  const supported = isWebRTCSupported();
+
+  if (!supported) {
+    return (
+      <div className="page">
+        <h1>Видеочат-комната</h1>
+        <ErrorBanner kind="WEBRTC_UNSUPPORTED" />
+      </div>
+    );
+  }
 
   if (!name) {
     return (
@@ -80,30 +91,28 @@ function RoomContent({ roomId, name }) {
   }, [connected, audioEnabled, videoEnabled, sendMediaState]);
 
   if (socketError) {
-  const handleRetry = () => {
-    if (socketError.code === 'ROOM_FULL') {
-      // Возвращаемся на стартовую страницу — пользователь введёт имя заново
-      window.location.href = '/';
-    } else if (socketError.code === 'SERVER_DOWN') {
-      // Перезагружаем страницу — попробуем подключиться снова
-      window.location.reload();
-    }
-  };
+    const handleRetry = () => {
+      if (socketError.code === 'ROOM_FULL') {
+        window.location.href = '/';
+      } else if (socketError.code === 'SERVER_DOWN') {
+        window.location.reload();
+      }
+    };
 
-  const showRetry =
-    socketError.code === 'ROOM_FULL' || socketError.code === 'SERVER_DOWN';
+    const showRetry =
+      socketError.code === 'ROOM_FULL' || socketError.code === 'SERVER_DOWN';
 
-  return (
-    <div className="page">
-      <h1>Видеочат-комната</h1>
-      <ErrorBanner
-        kind={socketError.code}
-        message={socketError.message}
-        onRetry={showRetry ? handleRetry : undefined}
-      />
-    </div>
-  );
-}
+    return (
+      <div className="page">
+        <h1>Видеочат-комната</h1>
+        <ErrorBanner
+          kind={socketError.code}
+          message={socketError.message}
+          onRetry={showRetry ? handleRetry : undefined}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="room">
