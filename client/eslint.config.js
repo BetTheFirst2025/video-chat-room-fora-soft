@@ -12,21 +12,21 @@ export default [
       parserOptions: {
         ecmaFeatures: { jsx: true },
       },
-    globals: {
-      window: 'readonly',
-      document: 'readonly',
-      navigator: 'readonly',
-      console: 'readonly',
-      setTimeout: 'readonly',
-      clearTimeout: 'readonly',
-      RTCPeerConnection: 'readonly',
-      RTCSessionDescription: 'readonly',   
-      RTCIceCandidate: 'readonly',          
-      MediaStream: 'readonly',
-      HTMLMediaElement: 'readonly',
-      fetch: 'readonly',
-      crypto: 'readonly',
-    },
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        RTCPeerConnection: 'readonly',
+        RTCSessionDescription: 'readonly',
+        RTCIceCandidate: 'readonly',
+        MediaStream: 'readonly',
+        HTMLMediaElement: 'readonly',
+        fetch: 'readonly',
+        crypto: 'readonly',
+      },
     },
     plugins: {
       react,
@@ -45,6 +45,33 @@ export default [
     },
   },
   {
-    ignores: ['node_modules/', 'dist/', 'coverage/', 'playwright-report/'],
+    ignores: [
+      'node_modules/',
+      'dist/',
+      'coverage/',
+      'playwright-report/',
+      'test-results/',
+    ],
+  },
+
+  // === Playwright config: Node.js-окружение ===
+  {
+    files: ['playwright.config.js'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+      },
+    },
+  },
+
+  // === Playwright tests: globals для test/expect ===
+  {
+    files: ['e2e/**/*.spec.js'],
+    languageOptions: {
+      globals: {
+        test: 'readonly',
+        expect: 'readonly',
+      },
+    },
   },
 ];
