@@ -14,6 +14,33 @@ const io = new Server(httpServer, {
   },
 });
 
+// === Security headers (task 44) ===
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self)');
+  next();
+});
+
+// === CSP только в production ===
+if (config.NODE_ENV === 'production') {
+  app.use((_req, res, next) => {
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "connect-src 'self' wss: ws:",
+        "media-src 'self' blob:",
+        "img-src 'self' data:",
+        "style-src 'self' 'unsafe-inline'",
+        "script-src 'self'",
+      ].join('; ')
+    );
+    next();
+  });
+}
+
 /** Единственный реестр комнат на процесс. */
 const registry = new RoomRegistry();
 
