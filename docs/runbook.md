@@ -7,15 +7,16 @@
 
 ## 1. Быстрые команды
 
-| Что                  | Команда                        |
-| ----------------------- | ------------------------------------- |
-| Dev-режим          | `npm run dev`                       |
-| Production-сборка | `npm run build`                     |
-| Production-запуск | `cd server && npm start`            |
-| Health-check            | `curl http://localhost:3000/health` |
-| Все тесты       | `npm test`                          |
-| E2E                     | `cd client && npm run e2e`          |
-| Load                    | `cd server && npm run load`         |
+| Что                  | Команда                         |
+| ----------------------- | -------------------------------------- |
+| Dev-режим          | `npm run dev`                        |
+| Production-сборка | `npm run build`                      |
+| Production-запуск | `cd server && npm start`             |
+| Health-check            | `curl http://localhost:3000/health`  |
+| Все тесты       | `npm test`                           |
+| E2E                     | `cd client && npm run e2e`           |
+| Load                    | `cd server && npm run load`          |
+| Генерация SSL  | `cd server && npm run generate-cert` |
 
 ---
 
@@ -32,13 +33,13 @@ curl http://localhost:3000/health
 
 - `0` — нет активных комнат.
 - `N` — N активных комнат.
-- **Растёт бесконечно** → утечка, см. раздел 5.
+- **Растёт бесконечно** → утечка, см. раздел 5.4.
 
 ### Мониторинг
 
 ```bash
 pm2 status         # статус процесса
-pm2 monit          # CPU/RAM
+pm2 monit          # CPU/RAM в реальном времени
 pm2 logs video-chat
 ```
 
@@ -131,6 +132,68 @@ pm2 restart video-chat
 
 > ⚠️ **Пользователи будут отключены** при перезапуске. Это **ожидаемо**.
 
+### 4.5. Откат production-сборки (статики)
+
+Если **новая сборка клиента** (`client/dist/`) сломала приложение — откатите **только статику**, не трогая сервер.
+
+```bash
+cd /var/www/video-chat-room-fora-soft
+
+# 1. Откатить исходники
+git checkout <previous-commit>
+
+# 2. Пересобрать
+npm run build
+
+# 3. Перезапустить сервер
+pm2 restart video-chat
+```
+
+**Если сервер вообще не трогали** — можно откатить **только** `client/dist/`:
+
+```bash
+# Восстановить client/dist из бэкапа
+tar -xzf /backups/client-dist-YYYY-MM-DD.tar.gz -C /var/www/video-chat-room-fora-soft/
+pm2 restart video-chat
+```
+
+### 4.6. Откат Node.js-образа
+
+Если **сервер** был обновлён (например, через `git pull` + `pm2 restart`) и **стал работать нестабильно**:
+
+```bash
+# 1. Откатить код
+cd /var/www/video-chat-room-fora-soft
+git checkout <previous-commit>
+
+# 2. Переустановить зависимости (чисто)
+npm ci
+
+# 3. Пересобрать клиент
+npm run build
+
+# 4. Перезапустить сервер
+pm2 restart video-chat
+```
+
+**Проверка:**
+
+```bash
+curl http://localhost:3000/health
+# {"ok":true,...,"env":"production"}
+```
+
+### 4.7. Что НЕ требует отката
+
+| Что                                            | Почему                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| **База данных**                   | Нет БД — состояние в памяти            |
+| **Миграции**                        | Не используются                                |
+| **Клиентское хранилище** | Не используется (localStorage, sessionStorage) |
+| **История чата**                 | Живёт только в памяти комнаты       |
+
+**Вывод:** откат **безопасен** — нет постоянного состояния.
+
 ---
 
 ## 5. Диагностика проблем
@@ -220,7 +283,7 @@ pm2 logs video-chat --lines 100
 
 - Нехватка памяти → `pm2 restart video-chat` (сбросит состояние).
 - Порт занят → `sudo kill <PID>`, потом `pm2 restart`.
-- Ошибка в коде → `git log`, откат.
+- Ошибка в коде → `git log`, откат (см. §4).
 
 ### 6.2. Сертификат Let's Encrypt истёк
 
@@ -285,5 +348,5 @@ pm2 restart video-chat
 ## 8. Контакты
 
 - **Разработчик:** Бельченко Елизавета Романовна
-- **Email:** b09101412@gmail.com[ваш email
+- **Email:** b09101412@gmail.com
 - **Репозиторий:** https://github.com/BetTheFirst2025/video-chat-room-fora-soft
