@@ -24,4 +24,17 @@ export default [
   {
     ignores: ['node_modules/', 'dist/', 'coverage/'],
   },
+  {
+    files: ['load/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
 ];
