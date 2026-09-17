@@ -80,17 +80,30 @@ function RoomContent({ roomId, name }) {
   }, [connected, audioEnabled, videoEnabled, sendMediaState]);
 
   if (socketError) {
-    return (
-      <div className="page">
-        <h1>Видеочат-комната</h1>
-        <ErrorBanner
-          kind={socketError.code}
-          message={socketError.message}
-          onRetry={socketError.code === 'SERVER_DOWN' ? () => window.location.reload() : undefined}
-        />
-      </div>
-    );
-  }
+  const handleRetry = () => {
+    if (socketError.code === 'ROOM_FULL') {
+      // Возвращаемся на стартовую страницу — пользователь введёт имя заново
+      window.location.href = '/';
+    } else if (socketError.code === 'SERVER_DOWN') {
+      // Перезагружаем страницу — попробуем подключиться снова
+      window.location.reload();
+    }
+  };
+
+  const showRetry =
+    socketError.code === 'ROOM_FULL' || socketError.code === 'SERVER_DOWN';
+
+  return (
+    <div className="page">
+      <h1>Видеочат-комната</h1>
+      <ErrorBanner
+        kind={socketError.code}
+        message={socketError.message}
+        onRetry={showRetry ? handleRetry : undefined}
+      />
+    </div>
+  );
+}
 
   return (
     <div className="room">
