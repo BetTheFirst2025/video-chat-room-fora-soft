@@ -8,6 +8,7 @@ import { useMesh } from '../hooks/useMesh.js';
 import VideoGrid from '../components/VideoGrid.jsx';
 import Controls from '../components/Controls.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
+import ParticipantsList from '../components/ParticipantsList.jsx';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -118,19 +119,7 @@ function RoomContent({ roomId, name }) {
         </section>
 
         <aside className="room__sidebar">
-          <section className="room__participants">
-            <h2>Участники ({participants.length})</h2>
-            <ul>
-              {participants.map((p) => (
-                <li key={p.id}>
-                  {p.name}
-                  {p.id === selfId && ' (вы)'}{' '}
-                  {p.audioEnabled === false && '🔇'}
-                  {p.videoEnabled === false && '🚫'}
-                </li>
-              ))}
-            </ul>
-          </section>
+          <ParticipantsList participants={participants} selfId={selfId} />
 
           <section className="room__chat">
             <h2>Чат</h2>
