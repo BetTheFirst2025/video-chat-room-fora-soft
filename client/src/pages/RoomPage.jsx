@@ -4,13 +4,13 @@ import NameForm from '../components/NameForm.jsx';
 import { useSocket } from '../hooks/useSocket.js';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
 import { useLocalMedia } from '../hooks/useLocalMedia.js';
+import { useMesh } from '../hooks/useMesh.js';
 
 export default function RoomPage() {
   const { roomId } = useParams();
   const location = useLocation();
   const [name, setName] = useState(location.state?.name ?? null);
 
-  // Если имя не задано — просим ввести (заход по прямой ссылке)
   if (!name) {
     return (
       <div className="page">
@@ -24,18 +24,16 @@ export default function RoomPage() {
   return <RoomContent roomId={roomId} name={name} />;
 }
 
-/**
- * Внутренний компонент — монтируется, когда есть name.
- * Нужен, чтобы useSocket не запускался до того, как name известен.
- */
 function RoomContent({ roomId, name }) {
   const {
+    socket,
     connected,
     error: socketError,
     selfId,
     participants,
     messages,
     sendMediaState,
+    sendSignal,
   } = useSocket(roomId, name);
 
   const {
@@ -47,6 +45,15 @@ function RoomContent({ roomId, name }) {
     toggleVideo,
   } = useLocalMedia();
 
+  // useMesh: PC-каркас (offer/answer — задача 28)
+  const { remoteStreams, connectionStates } = useMesh({
+    socket,
+    localStream,
+    participants,
+    selfId,
+    sendSignal,
+  });
+
   const { copy, copied } = useCopyToClipboard();
   const inviteUrl = typeof window !== 'undefined' ? window.location.href : '';
 
@@ -55,6 +62,20 @@ function RoomContent({ roomId, name }) {
     if (!connected) return;
     sendMediaState({ audioEnabled, videoEnabled });
   }, [connected, audioEnabled, videoEnabled, sendMediaState]);
+
+  // Заглушки для задачи 28 — используем, чтобы ESLint не ругался.
+  // Полноценное использование будет в задачах 29-35 (VideoGrid).
+  useEffect(() => {
+    if (remoteStreams.size > 0) {
+      console.log('[mesh] remoteStreams:', remoteStreams.size);
+    }
+  }, [remoteStreams]);
+
+  useEffect(() => {
+    if (connectionStates.size > 0) {
+      console.log('[mesh] connectionStates:', [...connectionStates.entries()]);
+    }
+  }, [connectionStates]);
 
   if (socketError) {
     return (
@@ -94,6 +115,7 @@ function RoomContent({ roomId, name }) {
             <p>Видео-сетка появится в задаче 30.</p>
             <p>Участников: {participants.length}</p>
             <p>Локальный поток: {localStream ? '✅ есть' : '❌ нет'}</p>
+            <p>Удалённых потоков: {remoteStreams.size}</p>
             <p>
               Микрофон: {audioEnabled ? '🎤 вкл' : '🔇 выкл'} · Камера:{' '}
               {videoEnabled ? '📹 вкл' : '🚫 выкл'}

@@ -14,13 +14,14 @@ import { io } from 'socket.io-client';
  *   participants: Array<object>,
  *   messages: Array<object>,
  *   sendMessage: (text: string) => void,
- *   sendSignal: (event: 'signal:offer' | 'signal:answer' | 'signal:ice', payload: object) => void,
+ *   sendSignal: (event: string, payload: object) => void,
  *   sendMediaState: (state: { audioEnabled: boolean, videoEnabled: boolean }) => void,
  *   leaveRoom: () => void,
  * }}
  */
 export function useSocket(roomId, name) {
   const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);   // ← РЕАКТИВНЫЙ socket
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
   const [selfId, setSelfId] = useState(null);
@@ -31,43 +32,43 @@ export function useSocket(roomId, name) {
     if (!roomId || !name) return;
 
     // Создаём сокет (same-origin — прокси Vite перенаправит на :3000)
-    const socket = io({
+    const s = io({
       transports: ['websocket', 'polling'],
       reconnection: false, // без автопереподключения (PRD US-11)
     });
-    socketRef.current = socket;
+    socketRef.current = s;
+    setSocket(s);   // ← уведомляем React
 
     // === connect / disconnect ===
-    socket.on('connect', () => {
+    s.on('connect', () => {
       setConnected(true);
       setError(null);
-      // Входим в комнату
-      socket.emit('room:join', { roomId, name });
+      s.emit('room:join', { roomId, name });
     });
 
-    socket.on('disconnect', () => {
+    s.on('disconnect', () => {
       setConnected(false);
     });
 
-    socket.on('connect_error', (err) => {
+    s.on('connect_error', (err) => {
       setConnected(false);
       setError({ code: 'SERVER_DOWN', message: err.message });
     });
 
     // === room:joined ===
-    socket.on('room:joined', (payload) => {
+    s.on('room:joined', (payload) => {
       setSelfId(payload.selfId);
       setParticipants(payload.participants);
       setMessages(payload.history);
     });
 
     // === room:error ===
-    socket.on('room:error', (payload) => {
+    s.on('room:error', (payload) => {
       setError({ code: payload.code });
     });
 
     // === room:participant-joined ===
-    socket.on('room:participant-joined', ({ participant }) => {
+    s.on('room:participant-joined', ({ participant }) => {
       setParticipants((prev) => {
         if (prev.some((p) => p.id === participant.id)) return prev;
         return [...prev, participant];
@@ -75,20 +76,20 @@ export function useSocket(roomId, name) {
     });
 
     // === room:participant-left ===
-    socket.on('room:participant-left', ({ participantId }) => {
+    s.on('room:participant-left', ({ participantId }) => {
       setParticipants((prev) => prev.filter((p) => p.id !== participantId));
     });
 
     // === chat:message ===
-    socket.on('chat:message', (message) => {
-    setMessages((prev) => {
+    s.on('chat:message', (message) => {
+      setMessages((prev) => {
         if (prev.some((m) => m.id === message.id)) return prev;
         return [...prev, message];
       });
     });
 
     // === media:state ===
-    socket.on('media:state', ({ participantId, audioEnabled, videoEnabled }) => {
+    s.on('media:state', ({ participantId, audioEnabled, videoEnabled }) => {
       setParticipants((prev) =>
         prev.map((p) =>
           p.id === participantId ? { ...p, audioEnabled, videoEnabled } : p
@@ -98,10 +99,11 @@ export function useSocket(roomId, name) {
 
     // Cleanup
     return () => {
-      socket.emit('room:leave');
-      socket.off();
-      socket.disconnect();
+      s.emit('room:leave');
+      s.off();
+      s.disconnect();
       socketRef.current = null;
+      setSocket(null);
     };
   }, [roomId, name]);
 
@@ -124,7 +126,7 @@ export function useSocket(roomId, name) {
   }, []);
 
   return {
-    socket: socketRef.current,
+    socket,          
     connected,
     error,
     selfId,
