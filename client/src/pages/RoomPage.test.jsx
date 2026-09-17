@@ -19,6 +19,13 @@ vi.mock('../hooks/useLocalMedia.js', () => ({
   useLocalMedia: vi.fn(),
 }));
 
+vi.mock('../hooks/useMesh.js', () => ({
+  useMesh: vi.fn(() => ({
+    remoteStreams: new Map(),
+    connectionStates: new Map(),
+  })),
+}));
+
 // === Дефолтные возвраты ===
 function defaultSocketReturn(overrides = {}) {
   return {
@@ -97,7 +104,6 @@ describe('RoomPage', () => {
 
     expect(screen.getByText(/test-room-1/)).toBeInTheDocument();
     expect(screen.getByText(/Подключено/)).toBeInTheDocument();
-
     expect(screen.getAllByText(/Алекс/).length).toBeGreaterThan(0);
   });
 
@@ -131,21 +137,22 @@ describe('RoomPage', () => {
     expect(screen.getByText(/ROOM_FULL/)).toBeInTheDocument();
   });
 
-  it('рендерит кнопку «Скопировать ссылку»', () => {
+  it('рендерит кнопку «Ссылка» из Controls', () => {
     renderWithRoute('/room/test-room-1', { name: 'Алекс' });
+    // Текст кнопки в Controls: «Ссылка» (или «Скопировано»)
     expect(
-      screen.getByRole('button', { name: /Скопировать ссылку/i })
+      screen.getByRole('button', { name: /Ссылка/i })
     ).toBeInTheDocument();
   });
 
-  it('вызывает copy при клике на кнопку', () => {
+  it('вызывает copy при клике на кнопку «Ссылка»', () => {
     const copyMock = vi.fn();
     useCopyToClipboard.mockImplementation(() =>
       defaultCopyReturn({ copy: copyMock })
     );
 
     renderWithRoute('/room/test-room-1', { name: 'Алекс' });
-    fireEvent.click(screen.getByRole('button', { name: /Скопировать ссылку/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Ссылка/i }));
 
     expect(copyMock).toHaveBeenCalledOnce();
   });

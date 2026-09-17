@@ -6,6 +6,7 @@ import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
 import { useLocalMedia } from '../hooks/useLocalMedia.js';
 import { useMesh } from '../hooks/useMesh.js';
 import VideoGrid from '../components/VideoGrid.jsx';
+import Controls from '../components/Controls.jsx';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -35,6 +36,7 @@ function RoomContent({ roomId, name }) {
     messages,
     sendMediaState,
     sendSignal,
+    leaveRoom,
   } = useSocket(roomId, name);
 
   const {
@@ -89,18 +91,8 @@ function RoomContent({ roomId, name }) {
         <div className="room__title">
           Комната: <code>{roomId}</code>
         </div>
-        <div className="room__header-actions">
-          <button
-            type="button"
-            className="room__copy-btn"
-            onClick={() => copy(inviteUrl)}
-            title="Скопировать ссылку-приглашение"
-          >
-            {copied ? '✓ Ссылка скопирована' : '🔗 Скопировать ссылку'}
-          </button>
-          <div className="room__status">
-            {connected ? '🟢 Подключено' : '🔴 Подключение…'}
-          </div>
+        <div className="room__status">
+          {connected ? '🟢 Подключено' : '🔴 Подключение…'}
         </div>
       </header>
 
@@ -112,14 +104,15 @@ function RoomContent({ roomId, name }) {
             </p>
           )}
           <VideoGrid tiles={tiles} />
-          <div className="room__controls-stub">
-            <button type="button" onClick={toggleAudio}>
-              {audioEnabled ? '🔇 Выключить микрофон' : '🎤 Включить микрофон'}
-            </button>
-            <button type="button" onClick={toggleVideo}>
-              {videoEnabled ? '🚫 Выключить камеру' : '📹 Включить камеру'}
-            </button>
-          </div>
+          <Controls
+            audioEnabled={audioEnabled}
+            videoEnabled={videoEnabled}
+            copied={copied}
+            onToggleAudio={toggleAudio}
+            onToggleVideo={toggleVideo}
+            onCopyLink={() => copy(inviteUrl)}
+            onLeave={leaveRoom}
+          />
         </section>
 
         <aside className="room__sidebar">
