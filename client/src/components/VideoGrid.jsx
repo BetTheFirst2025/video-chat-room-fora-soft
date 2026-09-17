@@ -15,7 +15,7 @@ import VideoTile from './VideoTile.jsx';
  *   }>,
  * }} props
  */
-export default function VideoGrid({ tiles }) {
+export default function VideoGrid({ tiles, onAutoplayBlocked }) {
   const count = tiles.length;
 
   let modifier = 'video-grid--1';
@@ -33,6 +33,7 @@ export default function VideoGrid({ tiles }) {
           videoEnabled={tile.videoEnabled}
           isSelf={tile.isSelf}
           connectionState={tile.connectionState}
+          onAutoplayBlocked={onAutoplayBlocked}
         />
       ))}
     </div>

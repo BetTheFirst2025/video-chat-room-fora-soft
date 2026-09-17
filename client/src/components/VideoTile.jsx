@@ -19,6 +19,7 @@ function VideoTile({
   videoEnabled,
   isSelf = false,
   connectionState = 'connected',
+   onAutoplayBlocked,
 }) {
   const videoRef = useRef(null);
 
@@ -29,14 +30,16 @@ function VideoTile({
 
     if (stream && el.srcObject !== stream) {
       el.srcObject = stream;
-      // autoplay может быть заблокирован — играем по клику, если упадёт
       el.play().catch((err) => {
         console.warn('[VideoTile] play() failed:', err.name);
+        if (err.name === 'NotAllowedError' && typeof onAutoplayBlocked === 'function') {
+          onAutoplayBlocked();
+        }
       });
     } else if (!stream) {
       el.srcObject = null;
     }
-  }, [stream]);
+  }, [stream, onAutoplayBlocked]);
 
   const showVideo = videoEnabled && stream;
 

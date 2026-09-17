@@ -1,5 +1,5 @@
 import { useParams, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import NameForm from '../components/NameForm.jsx';
 import { useSocket } from '../hooks/useSocket.js';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
@@ -84,6 +84,19 @@ function RoomContent({ roomId, name }) {
   const { copy, copied } = useCopyToClipboard();
   const inviteUrl = typeof window !== 'undefined' ? window.location.href : '';
 
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+
+  const handleAutoplayBlocked = useCallback(() => {
+    setAutoplayBlocked(true);
+  }, []);
+
+  const handleEnableAudio = () => {
+    document.querySelectorAll('video').forEach((v) => {
+      v.play().catch(() => {});
+    });
+    setAutoplayBlocked(false);
+  };
+
   // Синхронизируем медиа-состояние с сервером
   useEffect(() => {
     if (!connected) return;
@@ -127,12 +140,19 @@ function RoomContent({ roomId, name }) {
 
       <main className="room__main">
         <section className="room__video">
+          {autoplayBlocked && (
+            <button
+              type="button"
+              className="autoplay-banner"
+              onClick={handleEnableAudio} >🔊 Включить звук
+            </button>
+          )}
           {mediaError && (
             <div className="room__error-banner">
               <ErrorBanner kind={mediaError.code} message={mediaError.message} />
             </div>
           )}
-          <VideoGrid tiles={tiles} />
+          <VideoGrid tiles={tiles} onAutoplayBlocked={handleAutoplayBlocked} />
           <Controls
             audioEnabled={audioEnabled}
             videoEnabled={videoEnabled}
