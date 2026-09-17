@@ -1,0 +1,38 @@
+config:
+  target: "http://localhost:3000"
+  processor: "./processor.js"
+  phases:
+    - duration: 20
+      arrivalRate: 5
+      name: "Warm-up"
+    - duration: 30
+      arrivalRate: 20
+      name: "Ramp-up"
+    - duration: 20
+      arrivalRate: 30
+      name: "Peak"
+  socketio:
+    transports:
+      - websocket
+
+scenarios:
+  - name: "4 participants join a room"
+    engine: socketio
+    weight: 1
+    flow:
+      - function: "generateRoomId"
+      - loop:
+          - emit:
+              channel: "room:join"
+              data:
+                roomId: "{{ roomId }}"
+                name: "User-{{ $loopCount }}"
+          - think: 1
+        count: 4
+      - emit:
+          channel: "chat:message"
+          data:
+            text: "Hello from loadtest"
+      - think: 1
+      - emit:
+          channel: "room:leave"

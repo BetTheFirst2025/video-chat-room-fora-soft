@@ -102,4 +102,8 @@ bower_components
 
 # Project-specific
 # Локальные заметки (если не хотите коммитить)
-# NOTES.local.md                                          
+# NOTES.local.md 
+
+# Artillery reports
+server/load-report.json
+server/load-report.html
