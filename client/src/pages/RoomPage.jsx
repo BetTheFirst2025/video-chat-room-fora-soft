@@ -7,6 +7,7 @@ import { useLocalMedia } from '../hooks/useLocalMedia.js';
 import { useMesh } from '../hooks/useMesh.js';
 import VideoGrid from '../components/VideoGrid.jsx';
 import Controls from '../components/Controls.jsx';
+import ChatPanel from '../components/ChatPanel.jsx';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -34,6 +35,7 @@ function RoomContent({ roomId, name }) {
     selfId,
     participants,
     messages,
+    sendMessage,
     sendMediaState,
     sendSignal,
     leaveRoom,
@@ -132,14 +134,7 @@ function RoomContent({ roomId, name }) {
 
           <section className="room__chat">
             <h2>Чат</h2>
-            <div className="room__chat-placeholder">
-              <p>Сообщений: {messages.length}</p>
-              {messages.slice(-3).map((m) => (
-                <div key={m.id} className={`msg msg--${m.kind}`}>
-                  <strong>{m.authorName ?? 'system'}:</strong> {m.text}
-                </div>
-              ))}
-            </div>
+            <ChatPanel messages={messages} selfId={selfId} onSend={sendMessage} />
           </section>
         </aside>
       </main>
