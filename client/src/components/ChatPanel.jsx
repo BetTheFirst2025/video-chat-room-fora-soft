@@ -105,6 +105,7 @@ export default function ChatPanel({ messages, selfId, onSend }) {
           className="chat__send"
           disabled={!canSend}
           title="Отправить (Enter)"
+          aria-label="Отправить"
         >
           ➤
         </button>
