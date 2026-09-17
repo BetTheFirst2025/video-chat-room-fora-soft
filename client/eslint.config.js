@@ -23,6 +23,7 @@ export default [
       RTCSessionDescription: 'readonly',   
       RTCIceCandidate: 'readonly',          
       MediaStream: 'readonly',
+      HTMLMediaElement: 'readonly',
       fetch: 'readonly',
       crypto: 'readonly',
     },

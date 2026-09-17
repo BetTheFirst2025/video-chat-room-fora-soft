@@ -97,7 +97,8 @@ describe('RoomPage', () => {
 
     expect(screen.getByText(/test-room-1/)).toBeInTheDocument();
     expect(screen.getByText(/Подключено/)).toBeInTheDocument();
-    expect(screen.getByText(/Алекс/)).toBeInTheDocument();
+
+    expect(screen.getAllByText(/Алекс/).length).toBeGreaterThan(0);
   });
 
   it('вызывает useSocket с roomId и name', () => {

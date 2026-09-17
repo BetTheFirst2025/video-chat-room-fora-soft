@@ -5,6 +5,7 @@ import { useSocket } from '../hooks/useSocket.js';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
 import { useLocalMedia } from '../hooks/useLocalMedia.js';
 import { useMesh } from '../hooks/useMesh.js';
+import VideoGrid from '../components/VideoGrid.jsx';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -45,7 +46,6 @@ function RoomContent({ roomId, name }) {
     toggleVideo,
   } = useLocalMedia();
 
-  // useMesh: PC-каркас (offer/answer — задача 28)
   const { remoteStreams, connectionStates } = useMesh({
     socket,
     localStream,
@@ -54,28 +54,24 @@ function RoomContent({ roomId, name }) {
     sendSignal,
   });
 
+  const tiles = participants.map((p) => ({
+    id: p.id,
+    name: p.name,
+    stream: p.id === selfId ? localStream : (remoteStreams.get(p.id) ?? null),
+    audioEnabled: p.id === selfId ? audioEnabled : p.audioEnabled !== false,
+    videoEnabled: p.id === selfId ? videoEnabled : p.videoEnabled !== false,
+    isSelf: p.id === selfId,
+    connectionState: p.id === selfId ? 'connected' : connectionStates.get(p.id),
+  }));
+
   const { copy, copied } = useCopyToClipboard();
   const inviteUrl = typeof window !== 'undefined' ? window.location.href : '';
 
-  // Синхронизируем медиа-состояние с сервером при изменении.
+  // Синхронизируем медиа-состояние с сервером
   useEffect(() => {
     if (!connected) return;
     sendMediaState({ audioEnabled, videoEnabled });
   }, [connected, audioEnabled, videoEnabled, sendMediaState]);
-
-  // Заглушки для задачи 28 — используем, чтобы ESLint не ругался.
-  // Полноценное использование будет в задачах 29-35 (VideoGrid).
-  useEffect(() => {
-    if (remoteStreams.size > 0) {
-      console.log('[mesh] remoteStreams:', remoteStreams.size);
-    }
-  }, [remoteStreams]);
-
-  useEffect(() => {
-    if (connectionStates.size > 0) {
-      console.log('[mesh] connectionStates:', [...connectionStates.entries()]);
-    }
-  }, [connectionStates]);
 
   if (socketError) {
     return (
@@ -110,24 +106,19 @@ function RoomContent({ roomId, name }) {
 
       <main className="room__main">
         <section className="room__video">
-          <div className="room__video-placeholder">
-            {mediaError && <p className="media-error">⚠️ {mediaError.code}</p>}
-            <p>Видео-сетка появится в задаче 30.</p>
-            <p>Участников: {participants.length}</p>
-            <p>Локальный поток: {localStream ? '✅ есть' : '❌ нет'}</p>
-            <p>Удалённых потоков: {remoteStreams.size}</p>
-            <p>
-              Микрофон: {audioEnabled ? '🎤 вкл' : '🔇 выкл'} · Камера:{' '}
-              {videoEnabled ? '📹 вкл' : '🚫 выкл'}
+          {mediaError && (
+            <p className="media-error media-error--floating">
+              ⚠️ {mediaError.code}
             </p>
-            <div className="room__controls-stub">
-              <button type="button" onClick={toggleAudio}>
-                {audioEnabled ? '🔇 Выключить микрофон' : '🎤 Включить микрофон'}
-              </button>
-              <button type="button" onClick={toggleVideo}>
-                {videoEnabled ? '🚫 Выключить камеру' : '📹 Включить камеру'}
-              </button>
-            </div>
+          )}
+          <VideoGrid tiles={tiles} />
+          <div className="room__controls-stub">
+            <button type="button" onClick={toggleAudio}>
+              {audioEnabled ? '🔇 Выключить микрофон' : '🎤 Включить микрофон'}
+            </button>
+            <button type="button" onClick={toggleVideo}>
+              {videoEnabled ? '🚫 Выключить камеру' : '📹 Включить камеру'}
+            </button>
           </div>
         </section>
 
@@ -138,8 +129,7 @@ function RoomContent({ roomId, name }) {
               {participants.map((p) => (
                 <li key={p.id}>
                   {p.name}
-                  {p.id === selfId && ' (вы)'}
-                  {' '}
+                  {p.id === selfId && ' (вы)'}{' '}
                   {p.audioEnabled === false && '🔇'}
                   {p.videoEnabled === false && '🚫'}
                 </li>
