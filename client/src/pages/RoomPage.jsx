@@ -1,8 +1,9 @@
 import { useParams, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import NameForm from '../components/NameForm.jsx';
 import { useSocket } from '../hooks/useSocket.js';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
+import { useLocalMedia } from '../hooks/useLocalMedia.js';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -28,17 +29,39 @@ export default function RoomPage() {
  * Нужен, чтобы useSocket не запускался до того, как name известен.
  */
 function RoomContent({ roomId, name }) {
-  const { connected, error, selfId, participants, messages } = useSocket(roomId, name);
-  const { copy, copied } = useCopyToClipboard();
+  const {
+    connected,
+    error: socketError,
+    selfId,
+    participants,
+    messages,
+    sendMediaState,
+  } = useSocket(roomId, name);
 
+  const {
+    stream: localStream,
+    audioEnabled,
+    videoEnabled,
+    error: mediaError,
+    toggleAudio,
+    toggleVideo,
+  } = useLocalMedia();
+
+  const { copy, copied } = useCopyToClipboard();
   const inviteUrl = typeof window !== 'undefined' ? window.location.href : '';
 
-  if (error) {
+  // Синхронизируем медиа-состояние с сервером при изменении.
+  useEffect(() => {
+    if (!connected) return;
+    sendMediaState({ audioEnabled, videoEnabled });
+  }, [connected, audioEnabled, videoEnabled, sendMediaState]);
+
+  if (socketError) {
     return (
       <div className="page">
         <h1>Ошибка</h1>
-        <p>Код: {error.code}</p>
-        {error.message && <p>{error.message}</p>}
+        <p>Код: {socketError.code}</p>
+        {socketError.message && <p>{socketError.message}</p>}
       </div>
     );
   }
@@ -66,10 +89,23 @@ function RoomContent({ roomId, name }) {
 
       <main className="room__main">
         <section className="room__video">
-          {/* Заглушка — VideoGrid появится в задаче 30 */}
           <div className="room__video-placeholder">
+            {mediaError && <p className="media-error">⚠️ {mediaError.code}</p>}
             <p>Видео-сетка появится в задаче 30.</p>
             <p>Участников: {participants.length}</p>
+            <p>Локальный поток: {localStream ? '✅ есть' : '❌ нет'}</p>
+            <p>
+              Микрофон: {audioEnabled ? '🎤 вкл' : '🔇 выкл'} · Камера:{' '}
+              {videoEnabled ? '📹 вкл' : '🚫 выкл'}
+            </p>
+            <div className="room__controls-stub">
+              <button type="button" onClick={toggleAudio}>
+                {audioEnabled ? '🔇 Выключить микрофон' : '🎤 Включить микрофон'}
+              </button>
+              <button type="button" onClick={toggleVideo}>
+                {videoEnabled ? '🚫 Выключить камеру' : '📹 Включить камеру'}
+              </button>
+            </div>
           </div>
         </section>
 
@@ -81,6 +117,9 @@ function RoomContent({ roomId, name }) {
                 <li key={p.id}>
                   {p.name}
                   {p.id === selfId && ' (вы)'}
+                  {' '}
+                  {p.audioEnabled === false && '🔇'}
+                  {p.videoEnabled === false && '🚫'}
                 </li>
               ))}
             </ul>
@@ -88,7 +127,6 @@ function RoomContent({ roomId, name }) {
 
           <section className="room__chat">
             <h2>Чат</h2>
-            {/* Заглушка — ChatPanel появится в задаче 32 */}
             <div className="room__chat-placeholder">
               <p>Сообщений: {messages.length}</p>
               {messages.slice(-3).map((m) => (

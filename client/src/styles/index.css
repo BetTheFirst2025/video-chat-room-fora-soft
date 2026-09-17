@@ -242,3 +242,31 @@ h1 {
 .room__copy-btn:active {
   background: #2a2a2a;
 }
+
+.room__controls-stub {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.room__controls-stub button {
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #e6e6e6;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.room__controls-stub button:hover {
+  background: #3a3a3a;
+}
+
+.media-error {
+  color: #ff6b6b;
+  font-size: 13px;
+  margin-bottom: 8px;
+}

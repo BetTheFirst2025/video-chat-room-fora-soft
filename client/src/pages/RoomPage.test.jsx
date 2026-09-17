@@ -1,12 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import RoomPage from './RoomPage.jsx';
+import { useSocket } from '../hooks/useSocket.js';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard.js';
+import { useLocalMedia } from '../hooks/useLocalMedia.js';
 
-// Мокаем useSocket
+// === Моки хуков ===
 vi.mock('../hooks/useSocket.js', () => ({
-  useSocket: vi.fn(() => ({
+  useSocket: vi.fn(),
+}));
+
+vi.mock('../hooks/useCopyToClipboard.js', () => ({
+  useCopyToClipboard: vi.fn(),
+}));
+
+vi.mock('../hooks/useLocalMedia.js', () => ({
+  useLocalMedia: vi.fn(),
+}));
+
+// === Дефолтные возвраты ===
+function defaultSocketReturn(overrides = {}) {
+  return {
+    socket: null,
     connected: true,
     error: null,
     selfId: 'sock-1',
@@ -16,26 +32,50 @@ vi.mock('../hooks/useSocket.js', () => ({
     sendSignal: vi.fn(),
     sendMediaState: vi.fn(),
     leaveRoom: vi.fn(),
-  })),
-}));
+    ...overrides,
+  };
+}
 
-vi.mock('../hooks/useCopyToClipboard.js', () => ({
-  useCopyToClipboard: vi.fn(() => ({
+function defaultMediaReturn(overrides = {}) {
+  return {
+    stream: null,
+    audioEnabled: true,
+    videoEnabled: true,
+    error: null,
+    toggleAudio: vi.fn(),
+    toggleVideo: vi.fn(),
+    ...overrides,
+  };
+}
+
+function defaultCopyReturn(overrides = {}) {
+  return {
     copy: vi.fn(),
     copied: false,
     error: null,
-  })),
-}));
+    ...overrides,
+  };
+}
 
-import { useSocket } from '../hooks/useSocket.js';
+beforeEach(() => {
+  useSocket.mockReset();
+  useCopyToClipboard.mockReset();
+  useLocalMedia.mockReset();
+
+  useSocket.mockImplementation(() => defaultSocketReturn());
+  useCopyToClipboard.mockImplementation(() => defaultCopyReturn());
+  useLocalMedia.mockImplementation(() => defaultMediaReturn());
+});
 
 function renderWithRoute(initialEntry, state) {
   return render(
-    <MemoryRouter initialEntries={[{ pathname: initialEntry, state }]}
-     future={{
+    <MemoryRouter
+      initialEntries={[{ pathname: initialEntry, state }]}
+      future={{
         v7_startTransition: true,
         v7_relativeSplatPath: true,
-    }}>
+      }}
+    >
       <Routes>
         <Route path="/room/:roomId" element={<RoomPage />} />
       </Routes>
@@ -62,7 +102,6 @@ describe('RoomPage', () => {
 
   it('вызывает useSocket с roomId и name', () => {
     renderWithRoute('/room/my-room-42', { name: 'Мария' });
-
     expect(useSocket).toHaveBeenCalledWith('my-room-42', 'Мария');
   });
 
@@ -78,31 +117,31 @@ describe('RoomPage', () => {
   });
 
   it('показывает ошибку, если useSocket вернул error', () => {
-    useSocket.mockReturnValueOnce({
-      connected: false,
-      error: { code: 'ROOM_FULL' },
-      selfId: null,
-      participants: [],
-      messages: [],
-    });
+    useSocket.mockImplementation(() =>
+      defaultSocketReturn({
+        connected: false,
+        error: { code: 'ROOM_FULL' },
+        selfId: null,
+        participants: [],
+      })
+    );
 
     renderWithRoute('/room/test-room-1', { name: 'Алекс' });
     expect(screen.getByText(/ROOM_FULL/)).toBeInTheDocument();
   });
+
   it('рендерит кнопку «Скопировать ссылку»', () => {
-  renderWithRoute('/room/test-room-1', { name: 'Алекс' });
-  expect(
-    screen.getByRole('button', { name: /Скопировать ссылку/i })
-  ).toBeInTheDocument();
-});
+    renderWithRoute('/room/test-room-1', { name: 'Алекс' });
+    expect(
+      screen.getByRole('button', { name: /Скопировать ссылку/i })
+    ).toBeInTheDocument();
+  });
 
   it('вызывает copy при клике на кнопку', () => {
     const copyMock = vi.fn();
-    useCopyToClipboard.mockReturnValueOnce({
-      copy: copyMock,
-      copied: false,
-      error: null,
-    });
+    useCopyToClipboard.mockImplementation(() =>
+      defaultCopyReturn({ copy: copyMock })
+    );
 
     renderWithRoute('/room/test-room-1', { name: 'Алекс' });
     fireEvent.click(screen.getByRole('button', { name: /Скопировать ссылку/i }));
