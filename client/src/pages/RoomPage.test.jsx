@@ -123,7 +123,7 @@ describe('RoomPage', () => {
     expect(useSocket).toHaveBeenCalledWith('test-room-1', 'Алекс');
   });
 
-  it('показывает ошибку, если useSocket вернул error', () => {
+  it('показывает баннер «Комната заполнена» при ROOM_FULL', () => {
     useSocket.mockImplementation(() =>
       defaultSocketReturn({
         connected: false,
@@ -134,7 +134,9 @@ describe('RoomPage', () => {
     );
 
     renderWithRoute('/room/test-room-1', { name: 'Алекс' });
-    expect(screen.getByText(/ROOM_FULL/)).toBeInTheDocument();
+
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText(/Комната заполнена/)).toBeInTheDocument();
   });
 
   it('рендерит кнопку «Ссылка» из Controls', () => {

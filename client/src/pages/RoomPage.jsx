@@ -9,6 +9,7 @@ import VideoGrid from '../components/VideoGrid.jsx';
 import Controls from '../components/Controls.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
 import ParticipantsList from '../components/ParticipantsList.jsx';
+import ErrorBanner from '../components/ErrorBanner.jsx';
 
 export default function RoomPage() {
   const { roomId } = useParams();
@@ -81,9 +82,12 @@ function RoomContent({ roomId, name }) {
   if (socketError) {
     return (
       <div className="page">
-        <h1>Ошибка</h1>
-        <p>Код: {socketError.code}</p>
-        {socketError.message && <p>{socketError.message}</p>}
+        <h1>Видеочат-комната</h1>
+        <ErrorBanner
+          kind={socketError.code}
+          message={socketError.message}
+          onRetry={socketError.code === 'SERVER_DOWN' ? () => window.location.reload() : undefined}
+        />
       </div>
     );
   }
@@ -102,9 +106,9 @@ function RoomContent({ roomId, name }) {
       <main className="room__main">
         <section className="room__video">
           {mediaError && (
-            <p className="media-error media-error--floating">
-              ⚠️ {mediaError.code}
-            </p>
+            <div className="room__error-banner">
+              <ErrorBanner kind={mediaError.code} message={mediaError.message} />
+            </div>
           )}
           <VideoGrid tiles={tiles} />
           <Controls

@@ -619,3 +619,85 @@ h1 {
   font-size: 13px;
   line-height: 1;
 }
+
+/* === ErrorBanner === */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 14px;
+  margin: 12px auto;
+  max-width: 720px;
+}
+
+.error-banner__content {
+  flex: 1;
+}
+
+.error-banner__title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.error-banner__description {
+  font-size: 13px;
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
+.error-banner__details {
+  font-size: 12px;
+  opacity: 0.65;
+  margin-top: 4px;
+  font-family: monospace;
+}
+
+.error-banner__retry {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.error-banner__retry:hover {
+  opacity: 0.85;
+}
+
+/* Цветовые варианты */
+.error-banner--server_down,
+.error-banner--room_full {
+  background: rgba(180, 40, 40, 0.15);
+  border-color: #b42828;
+  color: #ff9999;
+}
+
+.error-banner--server_down .error-banner__retry,
+.error-banner--room_full .error-banner__retry {
+  background: #b42828;
+  color: #fff;
+}
+
+.error-banner--webrtc_unsupported,
+.error-banner--invalid_name,
+.error-banner--invalid_room,
+.error-banner--unknown {
+  background: rgba(180, 130, 40, 0.15);
+  border-color: #b48228;
+  color: #ffcc80;
+}
+
+.error-banner--media_denied,
+.error-banner--no_video,
+.error-banner--no_audio {
+  background: rgba(40, 100, 180, 0.15);
+  border-color: #2864b4;
+  color: #99c2ff;
+}
