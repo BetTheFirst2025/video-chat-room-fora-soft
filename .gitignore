@@ -107,3 +107,5 @@ bower_components
 # Artillery reports
 server/load-report.json
 server/load-report.html
+# SSL certs (local only)
+server/certs/

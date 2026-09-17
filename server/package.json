@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "load": "artillery run load/room-join.yml --output load-report.json",
     "load:report": "artillery report load-report.json",
+    "generate-cert": "node scripts/generate-cert.js", 
     "lint": "eslint ."
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@vitest/coverage-v8": "^1.6.1",
     "artillery": "^2.0.21",
     "eslint": "^9.0.0",
+    "node-forge": "^1.4.0",
     "prettier": "^3.2.5",
     "socket.io-client": "^4.7.5",
     "supertest": "^7.0.0",

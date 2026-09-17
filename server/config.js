@@ -9,4 +9,6 @@ export const config = {
   MAX_MESSAGES_PER_ROOM: parseInt(process.env.MAX_MESSAGES_PER_ROOM || '500', 10),
   STUN_URLS: process.env.STUN_URLS || 'stun:stun.l.google.com:19302',
   NODE_ENV: process.env.NODE_ENV || 'development',
+  SSL_CERT: process.env.SSL_CERT || null,  
+  SSL_KEY: process.env.SSL_KEY || null, 
 };
